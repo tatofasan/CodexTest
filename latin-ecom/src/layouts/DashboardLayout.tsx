@@ -60,6 +60,7 @@ const DashboardLayout = ({ children }: { children: ReactNode }) => {
               <button
                 type="button"
                 className="lg:hidden rounded-lg border border-slate-200 p-2 text-slate-600"
+                aria-label={isOpen ? 'Cerrar menú de navegación' : 'Abrir menú de navegación'}
                 onClick={() => setIsOpen((prev) => !prev)}
               >
                 <Menu size={18} />

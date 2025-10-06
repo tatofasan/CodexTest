@@ -63,8 +63,11 @@ const OrdersPage = () => {
       >
         <div className="flex flex-wrap gap-4">
           <div>
-            <label className="text-xs font-semibold text-slate-500">Estado</label>
+            <label className="text-xs font-semibold text-slate-500" htmlFor="order-status-filter">
+              Estado
+            </label>
             <select
+              id="order-status-filter"
               value={selectedStatus}
               onChange={(event) => setSelectedStatus(event.target.value)}
               className="mt-1 h-10 rounded-xl border border-slate-200 px-3 text-sm"
@@ -75,8 +78,11 @@ const OrdersPage = () => {
             </select>
           </div>
           <div>
-            <label className="text-xs font-semibold text-slate-500">Método de pago</label>
+            <label className="text-xs font-semibold text-slate-500" htmlFor="order-payment-filter">
+              Método de pago
+            </label>
             <select
+              id="order-payment-filter"
               value={paymentMethod}
               onChange={(event) => setPaymentMethod(event.target.value)}
               className="mt-1 h-10 rounded-xl border border-slate-200 px-3 text-sm"

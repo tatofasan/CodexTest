@@ -53,10 +53,13 @@ const ProductsPage = () => {
     >
       <div className="grid gap-4 md:grid-cols-3">
         <div className="md:col-span-2">
-          <label className="text-xs font-semibold text-slate-500">Buscar producto</label>
+          <label className="text-xs font-semibold text-slate-500" htmlFor="product-search">
+            Buscar producto
+          </label>
           <div className="mt-1 flex items-center gap-2 rounded-xl border border-slate-200 bg-white px-3">
             <Search size={16} className="text-slate-400" />
             <input
+              id="product-search"
               value={search}
               onChange={(event) => setSearch(event.target.value)}
               className="h-10 flex-1 border-0 bg-transparent text-sm text-secondary focus:outline-none"
@@ -65,8 +68,11 @@ const ProductsPage = () => {
           </div>
         </div>
         <div>
-          <label className="text-xs font-semibold text-slate-500">Categoría</label>
+          <label className="text-xs font-semibold text-slate-500" htmlFor="category-filter">
+            Categoría
+          </label>
           <select
+            id="category-filter"
             value={category}
             onChange={(event) => setCategory(event.target.value)}
             className="mt-1 h-10 w-full rounded-xl border border-slate-200 px-3 text-sm"
@@ -77,8 +83,11 @@ const ProductsPage = () => {
           </select>
         </div>
         <div>
-          <label className="text-xs font-semibold text-slate-500">Proveedor</label>
+          <label className="text-xs font-semibold text-slate-500" htmlFor="provider-filter">
+            Proveedor
+          </label>
           <select
+            id="provider-filter"
             value={provider}
             onChange={(event) => setProvider(event.target.value)}
             className="mt-1 h-10 w-full rounded-xl border border-slate-200 px-3 text-sm"
