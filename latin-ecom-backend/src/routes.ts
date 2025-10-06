@@ -1,4 +1,5 @@
 import { Router } from 'express';
+import type { Request, Response } from 'express';
 import { nanoid } from 'nanoid';
 import { z } from 'zod';
 import {
@@ -8,12 +9,18 @@ import {
   movements,
   orders,
   products,
+  users,
   walletRequests
 } from './data.js';
 import { isWithinRange, normalizeSearch, parseDate } from './utils.js';
-import { Order } from './types.js';
+import { Order, Product, User, UserRole } from './types.js';
 
 const router = Router();
+
+const loginSchema = z.object({
+  email: z.string().email(),
+  password: z.string().min(1)
+});
 
 const orderInputSchema = z.object({
   store: z.string().min(1),
@@ -52,9 +59,111 @@ const connectionUpdateSchema = z.object({
   lastSync: z.string().datetime().optional()
 });
 
+const productInputSchema = z.object({
+  name: z.string().min(1),
+  category: z.string().min(1),
+  provider: z.string().min(1),
+  cost: z.number().positive(),
+  suggestedPrice: z.number().positive(),
+  stock: z.number().min(0),
+  shippingTime: z.string().min(1),
+  rating: z.number().min(0).max(5).optional()
+});
+
+const productUpdateSchema = productInputSchema.partial();
+
 const toOrderResponse = (order: Order) => ({ data: order });
 
+const sessions = new Map<string, string>();
+
+const sanitizeUser = (user: User) => ({
+  id: user.id,
+  name: user.name,
+  email: user.email,
+  role: user.role
+});
+
+const getUserFromToken = (token: string | undefined) => {
+  if (!token) {
+    return undefined;
+  }
+  const userId = sessions.get(token);
+  if (!userId) {
+    return undefined;
+  }
+  return users.find((user) => user.id === userId);
+};
+
+const extractToken = (authorizationHeader: string | undefined) => {
+  if (!authorizationHeader) {
+    return undefined;
+  }
+  const [scheme, value] = authorizationHeader.split(' ');
+  if (scheme?.toLowerCase() !== 'bearer' || !value) {
+    return undefined;
+  }
+  return value;
+};
+
+const requireAuth = (req: Request, res: Response, role?: UserRole): User | undefined => {
+  const token = extractToken(req.headers.authorization);
+  const user = getUserFromToken(token);
+
+  if (!user) {
+    res.status(401).json({ error: 'No autorizado' });
+    return undefined;
+  }
+
+  if (role && user.role !== role) {
+    res.status(403).json({ error: 'Acceso denegado' });
+    return undefined;
+  }
+
+  return user;
+};
+
+const touchProduct = (product: Product, updates: Partial<Product>) => {
+  Object.assign(product, updates, { updatedAt: new Date().toISOString() });
+};
+
+router.post('/auth/login', (req, res) => {
+  const parsed = loginSchema.safeParse(req.body);
+  if (!parsed.success) {
+    res.status(400).json({ error: parsed.error.flatten() });
+    return;
+  }
+
+  const credentials = parsed.data;
+  const user = users.find(
+    (item) => item.email.toLowerCase() === credentials.email.toLowerCase() && item.password === credentials.password
+  );
+
+  if (!user) {
+    res.status(401).json({ error: 'Credenciales inválidas' });
+    return;
+  }
+
+  const token = nanoid(32);
+  sessions.set(token, user.id);
+
+  res.json({ data: { token, user: sanitizeUser(user) } });
+});
+
+router.get('/auth/me', (req, res) => {
+  const user = requireAuth(req, res);
+  if (!user) {
+    return;
+  }
+
+  res.json({ data: sanitizeUser(user) });
+});
+
 router.get('/products', (req, res) => {
+  const user = requireAuth(req, res);
+  if (!user) {
+    return;
+  }
+
   const { category, provider, search } = req.query as Record<string, string | undefined>;
   const searchValue = search ? normalizeSearch(search) : undefined;
 
@@ -71,7 +180,63 @@ router.get('/products', (req, res) => {
   res.json({ data: filtered });
 });
 
+router.post('/products', (req, res) => {
+  const user = requireAuth(req, res, 'admin');
+  if (!user) {
+    return;
+  }
+
+  const parsed = productInputSchema.safeParse(req.body);
+  if (!parsed.success) {
+    res.status(400).json({ error: parsed.error.flatten() });
+    return;
+  }
+
+  const now = new Date().toISOString();
+  const product: Product = {
+    id: `PRD-${nanoid(6).toUpperCase()}`,
+    ...parsed.data,
+    rating: parsed.data.rating ?? 0,
+    updatedAt: now
+  };
+
+  products.unshift(product);
+  res.status(201).json({ data: product });
+});
+
+router.patch('/products/:id', (req, res) => {
+  const user = requireAuth(req, res, 'admin');
+  if (!user) {
+    return;
+  }
+
+  const product = products.find((item) => item.id === req.params.id);
+  if (!product) {
+    res.status(404).json({ error: 'Producto no encontrado' });
+    return;
+  }
+
+  const parsed = productUpdateSchema.safeParse(req.body);
+  if (!parsed.success) {
+    res.status(400).json({ error: parsed.error.flatten() });
+    return;
+  }
+
+  const updates = { ...parsed.data } as Partial<Product>;
+  if (updates.rating === undefined) {
+    delete updates.rating;
+  }
+
+  touchProduct(product, updates);
+  res.json({ data: product });
+});
+
 router.get('/orders', (req, res) => {
+  const user = requireAuth(req, res);
+  if (!user) {
+    return;
+  }
+
   const { status, paymentMethod, search, from, to } = req.query as Record<string, string | undefined>;
   const fromDate = parseDate(from);
   const toDate = parseDate(to);
@@ -94,6 +259,11 @@ router.get('/orders', (req, res) => {
 });
 
 router.get('/orders/:id', (req, res) => {
+  const user = requireAuth(req, res);
+  if (!user) {
+    return;
+  }
+
   const order = orders.find((item) => item.id === req.params.id);
   if (!order) {
     res.status(404).json({ error: 'Pedido no encontrado' });
@@ -104,6 +274,11 @@ router.get('/orders/:id', (req, res) => {
 });
 
 router.post('/orders', (req, res) => {
+  const user = requireAuth(req, res);
+  if (!user) {
+    return;
+  }
+
   const parsed = orderInputSchema.safeParse(req.body);
   if (!parsed.success) {
     res.status(400).json({ error: parsed.error.flatten() });
@@ -122,6 +297,11 @@ router.post('/orders', (req, res) => {
 });
 
 router.patch('/orders/:id/status', (req, res) => {
+  const user = requireAuth(req, res);
+  if (!user) {
+    return;
+  }
+
   const order = orders.find((item) => item.id === req.params.id);
   if (!order) {
     res.status(404).json({ error: 'Pedido no encontrado' });
@@ -145,6 +325,11 @@ router.patch('/orders/:id/status', (req, res) => {
 });
 
 router.get('/movements', (req, res) => {
+  const user = requireAuth(req, res);
+  if (!user) {
+    return;
+  }
+
   const { type, category, from, to } = req.query as Record<string, string | undefined>;
   const fromDate = parseDate(from);
   const toDate = parseDate(to);
@@ -161,6 +346,11 @@ router.get('/movements', (req, res) => {
 });
 
 router.get('/wallet-requests', (req, res) => {
+  const user = requireAuth(req, res);
+  if (!user) {
+    return;
+  }
+
   const { status, type } = req.query as Record<string, string | undefined>;
   const filtered = walletRequests.filter((request) => {
     const matchesStatus = !status || request.status === status;
@@ -172,6 +362,11 @@ router.get('/wallet-requests', (req, res) => {
 });
 
 router.patch('/wallet-requests/:id/status', (req, res) => {
+  const user = requireAuth(req, res, 'admin');
+  if (!user) {
+    return;
+  }
+
   const request = walletRequests.find((item) => item.id === req.params.id);
   if (!request) {
     res.status(404).json({ error: 'Solicitud no encontrada' });
@@ -193,12 +388,22 @@ router.patch('/wallet-requests/:id/status', (req, res) => {
 });
 
 router.get('/connections', (req, res) => {
+  const user = requireAuth(req, res);
+  if (!user) {
+    return;
+  }
+
   const { status } = req.query as Record<string, string | undefined>;
   const filtered = connections.filter((connection) => !status || connection.status === status);
   res.json({ data: filtered });
 });
 
 router.patch('/connections/:id', (req, res) => {
+  const user = requireAuth(req, res, 'admin');
+  if (!user) {
+    return;
+  }
+
   const connection = connections.find((item) => item.id === req.params.id);
   if (!connection) {
     res.status(404).json({ error: 'Conexión no encontrada' });
@@ -222,6 +427,11 @@ router.patch('/connections/:id', (req, res) => {
 });
 
 router.get('/dashboard', (req, res) => {
+  const user = requireAuth(req, res);
+  if (!user) {
+    return;
+  }
+
   const { from, to } = req.query as Record<string, string | undefined>;
   const fromDate = parseDate(from);
   const toDate = parseDate(to);
@@ -234,6 +444,11 @@ router.get('/dashboard', (req, res) => {
 });
 
 router.get('/billing', (req, res) => {
+  const user = requireAuth(req, res);
+  if (!user) {
+    return;
+  }
+
   const { from, to } = req.query as Record<string, string | undefined>;
   const fromDate = parseDate(from);
   const toDate = parseDate(to);

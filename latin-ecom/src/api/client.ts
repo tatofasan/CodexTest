@@ -4,6 +4,8 @@ type RequestOptions = RequestInit & { query?: Record<string, string | number | b
 
 const baseUrl = (import.meta.env.VITE_API_URL ?? 'http://localhost:4000').replace(/\/$/, '');
 
+let authToken: string | null = null;
+
 const buildUrl = (path: string, query?: RequestOptions['query']) => {
   const url = new URL(`${baseUrl}${path}`);
   if (query) {
@@ -21,6 +23,7 @@ async function request<T>(path: string, options: RequestOptions = {}): Promise<T
     ...rest,
     headers: {
       'Content-Type': 'application/json',
+      ...(authToken ? { Authorization: `Bearer ${authToken}` } : {}),
       ...headers
     }
   });
@@ -42,6 +45,10 @@ export const apiClient = {
   get: request,
   post: <T>(path: string, body: unknown) => request<T>(path, { method: 'POST', body: JSON.stringify(body) }),
   patch: <T>(path: string, body: unknown) => request<T>(path, { method: 'PATCH', body: JSON.stringify(body) })
+};
+
+export const setAuthToken = (token: string | null) => {
+  authToken = token;
 };
 
 export type { RequestOptions };

@@ -9,6 +9,7 @@ import {
   OrderStatusSummaryItem,
   Product,
   TopProductSummary,
+  User,
   WalletRequest
 } from './types.js';
 
@@ -229,6 +230,23 @@ const initialConnections: Connection[] = [
     status: 'Error',
     connectedAt: subDays(today, 30).toISOString(),
     lastSync: subDays(today, 3).toISOString()
+  }
+];
+
+export const users: User[] = [
+  {
+    id: 'USR-100',
+    name: 'Sofía Martínez',
+    email: 'sofia@latinecom.com',
+    password: 'dropship123',
+    role: 'dropshipper'
+  },
+  {
+    id: 'USR-101',
+    name: 'Ana González',
+    email: 'ana@latinecom.com',
+    password: 'admin123',
+    role: 'admin'
   }
 ];
 

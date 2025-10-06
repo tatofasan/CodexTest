@@ -65,6 +65,16 @@ export interface Connection {
   lastSync: string;
 }
 
+export type UserRole = 'admin' | 'dropshipper';
+
+export interface User {
+  id: string;
+  name: string;
+  email: string;
+  password: string;
+  role: UserRole;
+}
+
 export interface OrderStatusSummaryItem {
   status: OrderStatus;
   value: number;
