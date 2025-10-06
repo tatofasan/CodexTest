@@ -40,6 +40,24 @@ npm run dev
 
 El frontend consumirá el backend para obtener los datos del panel.
 
+## Base de datos de prueba
+
+El backend incluye datos en memoria para la demo, pero si deseas probar la
+aplicación completa con una base de datos relacional puedes usar el script
+`latin-ecom-backend/database/schema.sql`. El archivo crea todas las tablas y
+registros de prueba que cubren los módulos de productos, pedidos, movimientos,
+solicitudes de billetera y conexiones.
+
+```bash
+# Crear la base de datos en PostgreSQL (ejemplo)
+createdb latin_ecom_demo
+psql latin_ecom_demo -f latin-ecom-backend/database/schema.sql
+```
+
+Después de ejecutar el script, ajusta la configuración del backend para que use
+tu instancia de PostgreSQL si lo deseas o consulta la información directamente
+desde la base de datos para validar escenarios de prueba end-to-end.
+
 ## Scripts adicionales
 
 ```bash
