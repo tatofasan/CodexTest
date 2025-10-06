@@ -1,10 +1,22 @@
 import SectionCard from '../components/SectionCard';
-import { billingBreakdown } from '../data/mockData';
 import { useState } from 'react';
+import { useBillingBreakdown } from '../api/hooks';
+import LoadingState from '../components/LoadingState';
+import ErrorState from '../components/ErrorState';
 
 const AccountPage = () => {
+  const { data, isLoading, isError, refetch } = useBillingBreakdown();
+  const billingBreakdown = data ?? [];
   const [autoRecharge, setAutoRecharge] = useState(true);
   const [alerts, setAlerts] = useState({ balance: true, incidents: true, payouts: false });
+
+  if (isLoading) {
+    return <LoadingState message="Cargando configuración de cuenta..." />;
+  }
+
+  if (isError) {
+    return <ErrorState onRetry={() => refetch()} />;
+  }
 
   return (
     <div className="space-y-6">

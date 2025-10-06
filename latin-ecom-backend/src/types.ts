@@ -70,7 +70,7 @@ export interface OrderStatusSummaryItem {
   value: number;
 }
 
-export interface TopProductSummaryItem {
+export interface TopProductSummary {
   product: string;
   units: number;
   revenue: number;
@@ -81,19 +81,11 @@ export interface BillingBreakdownItem {
   value: number;
 }
 
-export interface DashboardResponse {
+export interface DashboardPayload {
   orders: Order[];
   movements: Movement[];
   products: Product[];
   orderStatusSummary: OrderStatusSummaryItem[];
-  topProducts: TopProductSummaryItem[];
+  topProducts: TopProductSummary[];
   billingBreakdown: BillingBreakdownItem[];
-}
-
-export interface ApiListResponse<T> {
-  data: T;
-}
-
-export interface ApiItemResponse<T> {
-  data: T;
 }

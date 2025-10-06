@@ -1,8 +1,11 @@
+import { useMemo } from 'react';
 import SectionCard from '../components/SectionCard';
-import { connections } from '../data/mockData';
 import { Link2, RefreshCw, PlugZap } from 'lucide-react';
 import { formatDistanceToNow } from 'date-fns';
 import { es } from 'date-fns/locale';
+import { useConnections } from '../api/hooks';
+import LoadingState from '../components/LoadingState';
+import ErrorState from '../components/ErrorState';
 
 const statusClass = {
   Activa: 'text-success bg-success/10',
@@ -11,6 +14,17 @@ const statusClass = {
 } as const;
 
 const ConnectionsPage = () => {
+  const { data, isLoading, isError, refetch } = useConnections();
+  const connections = useMemo(() => data ?? [], [data]);
+
+  if (isLoading) {
+    return <LoadingState message="Cargando integraciones..." />;
+  }
+
+  if (isError) {
+    return <ErrorState onRetry={() => refetch()} />;
+  }
+
   return (
     <div className="space-y-6">
       <SectionCard

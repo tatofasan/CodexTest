@@ -1,19 +1,26 @@
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import SectionCard from '../components/SectionCard';
-import { orders } from '../data/mockData';
 import StatusBadge from '../components/StatusBadge';
 import { es } from 'date-fns/locale';
 import { format } from 'date-fns';
 import { Filter, FileText } from 'lucide-react';
 import clsx from 'clsx';
+import { useOrders } from '../api/hooks';
+import LoadingState from '../components/LoadingState';
+import ErrorState from '../components/ErrorState';
 
-const statusOptions = ['Todos', ...Array.from(new Set(orders.map((order) => order.status)))];
 const paymentOptions = ['Todos', 'TC', 'COD'];
 
 const OrdersPage = () => {
+  const { data, isLoading, isError, refetch } = useOrders();
+  const orders = useMemo(() => data ?? [], [data]);
   const [selectedStatus, setSelectedStatus] = useState('Todos');
   const [paymentMethod, setPaymentMethod] = useState('Todos');
-  const [selectedOrder, setSelectedOrder] = useState<string | null>(orders[0]?.id ?? null);
+  const [selectedOrder, setSelectedOrder] = useState<string | null>(null);
+  const statusOptions = useMemo(
+    () => ['Todos', ...Array.from(new Set(orders.map((order) => order.status)))],
+    [orders]
+  );
 
   const filteredOrders = useMemo(() => {
     return orders.filter((order) => {
@@ -21,9 +28,27 @@ const OrdersPage = () => {
       const matchesPayment = paymentMethod === 'Todos' || order.paymentMethod === paymentMethod;
       return matchesStatus && matchesPayment;
     });
-  }, [paymentMethod, selectedStatus]);
+  }, [orders, paymentMethod, selectedStatus]);
+
+  useEffect(() => {
+    if (!filteredOrders.length) {
+      setSelectedOrder(null);
+      return;
+    }
+    if (!selectedOrder || !filteredOrders.some((order) => order.id === selectedOrder)) {
+      setSelectedOrder(filteredOrders[0].id);
+    }
+  }, [filteredOrders, selectedOrder]);
 
   const currentOrder = filteredOrders.find((order) => order.id === selectedOrder) ?? filteredOrders[0];
+
+  if (isLoading) {
+    return <LoadingState message="Cargando pedidos..." />;
+  }
+
+  if (isError) {
+    return <ErrorState onRetry={() => refetch()} />;
+  }
 
   return (
     <div className="grid gap-6 xl:grid-cols-[2fr_1fr]">

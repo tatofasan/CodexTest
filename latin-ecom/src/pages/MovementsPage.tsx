@@ -1,16 +1,23 @@
 import { useMemo, useState } from 'react';
 import SectionCard from '../components/SectionCard';
-import { movements } from '../data/mockData';
 import { format } from 'date-fns';
 import { es } from 'date-fns/locale';
 import { ArrowDownCircle, ArrowUpCircle, Download } from 'lucide-react';
+import { useMovements } from '../api/hooks';
+import LoadingState from '../components/LoadingState';
+import ErrorState from '../components/ErrorState';
 
 const typeOptions = ['Todos', 'Ingreso', 'Egreso'] as const;
-const categoryOptions = ['Todas', ...Array.from(new Set(movements.map((m) => m.category)))] as const;
 
 const MovementsPage = () => {
+  const { data, isLoading, isError, refetch } = useMovements();
+  const movements = useMemo(() => data ?? [], [data]);
   const [typeFilter, setTypeFilter] = useState<(typeof typeOptions)[number]>('Todos');
-  const [categoryFilter, setCategoryFilter] = useState<(typeof categoryOptions)[number]>('Todas');
+  const [categoryFilter, setCategoryFilter] = useState('Todas');
+  const categoryOptions = useMemo(
+    () => ['Todas', ...Array.from(new Set(movements.map((movement) => movement.category)))] as const,
+    [movements]
+  );
 
   const filtered = useMemo(() => {
     return movements.filter((movement) => {
@@ -18,7 +25,7 @@ const MovementsPage = () => {
       const categoryOk = categoryFilter === 'Todas' || movement.category === categoryFilter;
       return typeOk && categoryOk;
     });
-  }, [categoryFilter, typeFilter]);
+  }, [categoryFilter, movements, typeFilter]);
 
   const totals = filtered.reduce(
     (acc, movement) => {
@@ -31,6 +38,14 @@ const MovementsPage = () => {
     },
     { incomes: 0, expenses: 0 }
   );
+
+  if (isLoading) {
+    return <LoadingState message="Cargando movimientos..." />;
+  }
+
+  if (isError) {
+    return <ErrorState onRetry={() => refetch()} />;
+  }
 
   return (
     <SectionCard
@@ -59,7 +74,7 @@ const MovementsPage = () => {
           <label className="text-xs font-semibold text-slate-500">Categoría</label>
           <select
             value={categoryFilter}
-            onChange={(event) => setCategoryFilter(event.target.value as (typeof categoryOptions)[number])}
+            onChange={(event) => setCategoryFilter(event.target.value)}
             className="mt-1 h-10 rounded-xl border border-slate-200 px-3 text-sm"
           >
             {categoryOptions.map((option) => (

@@ -1,0 +1,5 @@
+node_modules
+*.log
+.DS_Store
+latin-ecom-backend/dist
+latin-ecom-backend/.turbo

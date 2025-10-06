@@ -1,9 +1,11 @@
 import SectionCard from '../components/SectionCard';
-import { walletRequests } from '../data/mockData';
 import { useMemo, useState } from 'react';
 import { es } from 'date-fns/locale';
 import { format } from 'date-fns';
 import { CircleCheck, CircleDashed, CircleX, PlusCircle } from 'lucide-react';
+import { useWalletRequests } from '../api/hooks';
+import LoadingState from '../components/LoadingState';
+import ErrorState from '../components/ErrorState';
 
 const statusStyles = {
   Pendiente: 'bg-warning/10 text-warning',
@@ -12,11 +14,21 @@ const statusStyles = {
 } as const;
 
 const RequestsPage = () => {
+  const { data, isLoading, isError, refetch } = useWalletRequests();
+  const walletRequests = useMemo(() => data ?? [], [data]);
   const [statusFilter, setStatusFilter] = useState<'Todas' | keyof typeof statusStyles>('Todas');
 
   const filtered = useMemo(() => {
     return walletRequests.filter((request) => statusFilter === 'Todas' || request.status === statusFilter);
-  }, [statusFilter]);
+  }, [statusFilter, walletRequests]);
+
+  if (isLoading) {
+    return <LoadingState message="Cargando solicitudes financieras..." />;
+  }
+
+  if (isError) {
+    return <ErrorState onRetry={() => refetch()} />;
+  }
 
   return (
     <SectionCard
