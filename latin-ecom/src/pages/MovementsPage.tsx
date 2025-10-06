@@ -59,8 +59,11 @@ const MovementsPage = () => {
     >
       <div className="flex flex-wrap gap-4">
         <div>
-          <label className="text-xs font-semibold text-slate-500">Tipo</label>
+          <label className="text-xs font-semibold text-slate-500" htmlFor="movement-type-filter">
+            Tipo
+          </label>
           <select
+            id="movement-type-filter"
             value={typeFilter}
             onChange={(event) => setTypeFilter(event.target.value as (typeof typeOptions)[number])}
             className="mt-1 h-10 rounded-xl border border-slate-200 px-3 text-sm"
@@ -71,8 +74,11 @@ const MovementsPage = () => {
           </select>
         </div>
         <div>
-          <label className="text-xs font-semibold text-slate-500">Categoría</label>
+          <label className="text-xs font-semibold text-slate-500" htmlFor="movement-category-filter">
+            Categoría
+          </label>
           <select
+            id="movement-category-filter"
             value={categoryFilter}
             onChange={(event) => setCategoryFilter(event.target.value)}
             className="mt-1 h-10 rounded-xl border border-slate-200 px-3 text-sm"

@@ -67,8 +67,14 @@ npm run build
 # Frontend: ejecutar linter
 npm run lint
 
-# Frontend: ejecutar pruebas (vitest)
-npm test
+# Frontend: ejecutar pruebas unitarias con cobertura
+npm run test:unit
+
+# Frontend: ejecutar pruebas end-to-end con Playwright
+npm run test:e2e
+
+# Frontend: ejecutar todo el set de pruebas
+npm run test:all
 ```
 
 ## Estructura
