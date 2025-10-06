@@ -26,7 +26,9 @@ export const useProducts = () =>
     select: (response) => response.data
   });
 
-export const useOrders = (params?: { status?: string; paymentMethod?: string; search?: string }) =>
+export const useOrders = (
+  params?: { status?: string; paymentMethod?: string; search?: string; from?: string; to?: string }
+) =>
   useQuery({
     queryKey: ['orders', params],
     queryFn: () => apiClient.get<ApiListResponse<Order[]>>('/api/orders', { query: params }),
