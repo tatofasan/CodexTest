@@ -2,7 +2,7 @@ import SectionCard from '../components/SectionCard';
 import StatCard from '../components/StatCard';
 import { Activity, Package, TrendingUp, Wallet } from 'lucide-react';
 import { useDashboard } from '../api/hooks';
-import { format } from 'date-fns';
+import { format, formatDistanceToNow } from 'date-fns';
 import { es } from 'date-fns/locale';
 import {
   Bar,
@@ -35,12 +35,27 @@ const HomePage = () => {
 
   const { orders, movements, products, orderStatusSummary, topProducts, billingBreakdown } = data;
 
-  const deliveredRate = orders.length
-    ? Math.round((orders.filter((order) => order.status === 'Entregado').length / orders.length) * 100)
-    : 0;
-  const incidents = orders.filter((order) => ['En revisión', 'Registrar pago'].includes(order.status)).length;
-  const pendingToConfirm = orders.filter((order) => order.status === 'Pendiente').length;
-  const walletBalance = movements.reduce((acc, mov) => acc + mov.amount, 3450);
+  const deliveredOrders = orders.filter((order) => order.status === 'Entregado');
+  const deliveredRate = orders.length ? Math.round((deliveredOrders.length / orders.length) * 100) : 0;
+  const latestDelivered = deliveredOrders
+    .slice()
+    .sort((a, b) => b.createdAt.localeCompare(a.createdAt))[0];
+
+  const incidentOrders = orders.filter((order) => ['En revisión', 'Registrar pago'].includes(order.status));
+  const incidents = incidentOrders.length;
+  const latestIncident = incidentOrders
+    .slice()
+    .sort((a, b) => b.createdAt.localeCompare(a.createdAt))[0];
+
+  const pendingOrders = orders.filter((order) => order.status === 'Pendiente');
+  const pendingToConfirm = pendingOrders.length;
+  const latestPending = pendingOrders
+    .slice()
+    .sort((a, b) => b.createdAt.localeCompare(a.createdAt))[0];
+
+  const sortedMovements = movements.slice().sort((a, b) => b.date.localeCompare(a.date));
+  const walletBalance = movements.reduce((acc, mov) => acc + mov.amount, 0);
+  const latestMovement = sortedMovements[0];
 
   return (
     <div className="space-y-6">
@@ -48,25 +63,60 @@ const HomePage = () => {
         <StatCard
           title="Pedidos entregados"
           value={`${deliveredRate}%`}
-          trend={{ label: 'vs. mes anterior', value: '+8%', positive: true }}
+          trend={
+            latestDelivered
+              ? {
+                  label: 'Última entrega',
+                  value: formatDistanceToNow(new Date(latestDelivered.createdAt), { addSuffix: true, locale: es }),
+                  positive: true
+                }
+              : { label: 'Entregas registradas', value: 'Sin registros', positive: true }
+          }
           icon={<Activity />}
         />
         <StatCard
           title="Pedidos con incidencias"
           value={`${incidents}`}
-          trend={{ label: 'A revisión', value: '+2 casos', positive: false }}
+          trend={
+            latestIncident
+              ? {
+                  label: 'Última incidencia',
+                  value: formatDistanceToNow(new Date(latestIncident.createdAt), { addSuffix: true, locale: es }),
+                  positive: false
+                }
+              : { label: 'Estado', value: 'Sin incidencias activas', positive: true }
+          }
           icon={<TrendingUp />}
         />
         <StatCard
           title="Pendientes por confirmar"
           value={`${pendingToConfirm}`}
-          trend={{ label: 'Últimas 24h', value: '3 nuevos', positive: false }}
+          trend={
+            latestPending
+              ? {
+                  label: 'Último ingreso',
+                  value: formatDistanceToNow(new Date(latestPending.createdAt), { addSuffix: true, locale: es }),
+                  positive: pendingToConfirm === 0
+                }
+              : { label: 'Estado', value: 'Sin pedidos pendientes', positive: true }
+          }
           icon={<Package />}
         />
         <StatCard
           title="Saldo billetera"
           value={`USDT ${walletBalance.toFixed(2)}`}
-          trend={{ label: 'Última recarga', value: 'USDT 1,500', positive: true }}
+          trend={
+            latestMovement
+              ? {
+                  label: 'Último movimiento',
+                  value: `${latestMovement.amount > 0 ? '+' : '-'}USDT ${Math.abs(latestMovement.amount).toFixed(2)} · ${formatDistanceToNow(
+                    new Date(latestMovement.date),
+                    { addSuffix: true, locale: es }
+                  )}`,
+                  positive: latestMovement.amount >= 0
+                }
+              : { label: 'Último movimiento', value: 'Sin registros', positive: true }
+          }
           icon={<Wallet />}
         />
       </div>

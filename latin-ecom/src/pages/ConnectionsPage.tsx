@@ -3,7 +3,7 @@ import SectionCard from '../components/SectionCard';
 import { Link2, RefreshCw, PlugZap } from 'lucide-react';
 import { formatDistanceToNow } from 'date-fns';
 import { es } from 'date-fns/locale';
-import { useConnections } from '../api/hooks';
+import { useConnections, useOrders } from '../api/hooks';
 import LoadingState from '../components/LoadingState';
 import ErrorState from '../components/ErrorState';
 
@@ -17,12 +17,30 @@ const ConnectionsPage = () => {
   const { data, isLoading, isError, refetch } = useConnections();
   const connections = useMemo(() => data ?? [], [data]);
 
-  if (isLoading) {
+  const dateFilters = useMemo(() => {
+    const now = new Date();
+    const from = new Date(now);
+    from.setDate(now.getDate() - 30);
+    return { from: from.toISOString(), to: now.toISOString() };
+  }, []);
+
+  const {
+    data: recentOrders,
+    isLoading: isOrdersLoading,
+    isError: isOrdersError,
+    refetch: refetchOrders
+  } = useOrders(dateFilters);
+  const syncedOrdersLast30Days = useMemo(() => recentOrders?.length ?? 0, [recentOrders]);
+
+  if (isLoading || isOrdersLoading) {
     return <LoadingState message="Cargando integraciones..." />;
   }
 
-  if (isError) {
-    return <ErrorState onRetry={() => refetch()} />;
+  if (isError || isOrdersError) {
+    return <ErrorState onRetry={() => {
+      refetch();
+      refetchOrders();
+    }} />;
   }
 
   return (
@@ -91,7 +109,7 @@ const ConnectionsPage = () => {
           </div>
           <div className="rounded-2xl bg-white p-4 shadow-inner">
             <p className="text-sm text-slate-500">Pedidos sincronizados 30d</p>
-            <p className="mt-2 text-3xl font-semibold text-primary">186</p>
+            <p className="mt-2 text-3xl font-semibold text-primary">{syncedOrdersLast30Days}</p>
           </div>
         </div>
         <div className="mt-4 rounded-2xl border border-dashed border-slate-300 bg-slate-50 p-5 text-sm text-slate-600">
