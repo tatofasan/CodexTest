@@ -1,10 +1,15 @@
 import { useMemo, useState } from 'react';
+import { useMutation, useQueryClient } from '@tanstack/react-query';
 import SectionCard from '../components/SectionCard';
-import { Star, Filter, Search } from 'lucide-react';
+import { Star, Filter, Search, Plus, Pencil } from 'lucide-react';
 import { useProducts } from '../api/hooks';
 import LoadingState from '../components/LoadingState';
 import ErrorState from '../components/ErrorState';
-import { Product } from '../utils/types';
+import { ApiItemResponse, Product } from '../utils/types';
+import { useAuth } from '../contexts/AuthContext';
+import ProductFormModal, { ProductFormValues } from '../components/ProductFormModal';
+import { apiClient } from '../api/client';
+import { ApiError } from '../utils/errors';
 
 const uniqueValues = (items: string[]) => Array.from(new Set(items)).sort();
 
@@ -14,6 +19,25 @@ const ProductsPage = () => {
   const [search, setSearch] = useState('');
   const [category, setCategory] = useState('Todas');
   const [provider, setProvider] = useState('Todos');
+  const [isModalOpen, setIsModalOpen] = useState(false);
+  const [selectedProduct, setSelectedProduct] = useState<Product | null>(null);
+  const [formError, setFormError] = useState<string | null>(null);
+  const queryClient = useQueryClient();
+  const { user } = useAuth();
+  const isAdmin = user?.role === 'admin';
+
+  const createProductMutation = useMutation({
+    mutationFn: (payload: ProductFormValues) =>
+      apiClient.post<ApiItemResponse<Product>>('/api/products', payload)
+  });
+
+  const updateProductMutation = useMutation({
+    mutationFn: ({ id, data }: { id: string; data: ProductFormValues }) =>
+      apiClient.patch<ApiItemResponse<Product>>(`/api/products/${id}`, data)
+  });
+
+  const isSaving = createProductMutation.isPending || updateProductMutation.isPending;
+
   const categories = useMemo(
     () => ['Todas', ...uniqueValues(products.map((product: Product) => product.category))],
     [products]
@@ -32,6 +56,49 @@ const ProductsPage = () => {
     });
   }, [category, products, provider, search]);
 
+  const handleOpenCreate = () => {
+    setSelectedProduct(null);
+    setFormError(null);
+    setIsModalOpen(true);
+  };
+
+  const handleOpenEdit = (product: Product) => {
+    setSelectedProduct(product);
+    setFormError(null);
+    setIsModalOpen(true);
+  };
+
+  const handleCloseModal = () => {
+    setIsModalOpen(false);
+    setSelectedProduct(null);
+    setFormError(null);
+    createProductMutation.reset();
+    updateProductMutation.reset();
+  };
+
+  const handleSubmitProduct = async (values: ProductFormValues) => {
+    setFormError(null);
+    try {
+      if (selectedProduct) {
+        await updateProductMutation.mutateAsync({ id: selectedProduct.id, data: values });
+      } else {
+        await createProductMutation.mutateAsync(values);
+      }
+      await queryClient.invalidateQueries({ queryKey: ['products'] });
+      handleCloseModal();
+    } catch (error) {
+      if (error instanceof ApiError) {
+        if (typeof (error.details as { error?: string })?.error === 'string') {
+          setFormError((error.details as { error?: string }).error ?? error.message);
+        } else {
+          setFormError(error.message);
+        }
+      } else {
+        setFormError('No fue posible guardar el producto. Intenta nuevamente.');
+      }
+    }
+  };
+
   if (isLoading) {
     return <LoadingState message="Cargando catálogo de productos..." />;
   }
@@ -45,10 +112,22 @@ const ProductsPage = () => {
       title="Catálogo de productos"
       subtitle="Explora el inventario disponible para dropshipping"
       action={
-        <button className="inline-flex items-center gap-2 rounded-xl border border-primary px-4 py-2 text-sm font-semibold text-primary">
-          <Filter size={16} />
-          Exportar CSV
-        </button>
+        <div className="flex flex-wrap items-center gap-2">
+          <button className="inline-flex items-center gap-2 rounded-xl border border-primary px-4 py-2 text-sm font-semibold text-primary">
+            <Filter size={16} />
+            Exportar CSV
+          </button>
+          {isAdmin && (
+            <button
+              type="button"
+              onClick={handleOpenCreate}
+              className="inline-flex items-center gap-2 rounded-xl bg-primary px-4 py-2 text-sm font-semibold text-white shadow-sm transition-colors hover:bg-primary/90"
+            >
+              <Plus size={16} />
+              Cargar producto
+            </button>
+          )}
+        </div>
       }
     >
       <div className="grid gap-4 md:grid-cols-3">
@@ -133,13 +212,38 @@ const ProductsPage = () => {
                 <Star size={16} fill="currentColor" />
                 <span>{product.rating.toFixed(1)}</span>
               </div>
-              <button className="rounded-xl bg-primary px-4 py-2 text-xs font-semibold text-white shadow-sm">
-                Agregar a mi tienda
-              </button>
+              {isAdmin ? (
+                <div className="flex gap-2">
+                  <button
+                    type="button"
+                    onClick={() => handleOpenEdit(product)}
+                    className="inline-flex items-center gap-2 rounded-xl border border-primary px-3 py-2 text-xs font-semibold text-primary transition-colors hover:bg-primary/10"
+                  >
+                    <Pencil size={14} />
+                    Editar ficha
+                  </button>
+                  <button className="rounded-xl bg-primary px-4 py-2 text-xs font-semibold text-white shadow-sm">
+                    Agregar a mi tienda
+                  </button>
+                </div>
+              ) : (
+                <button className="rounded-xl bg-primary px-4 py-2 text-xs font-semibold text-white shadow-sm">
+                  Agregar a mi tienda
+                </button>
+              )}
             </div>
           </article>
         ))}
       </div>
+
+      <ProductFormModal
+        isOpen={isModalOpen}
+        onClose={handleCloseModal}
+        onSubmit={handleSubmitProduct}
+        initialValues={selectedProduct}
+        isSubmitting={isSaving}
+        error={formError}
+      />
     </SectionCard>
   );
 };

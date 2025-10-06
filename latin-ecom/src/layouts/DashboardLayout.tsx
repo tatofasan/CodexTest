@@ -1,8 +1,8 @@
-import { ReactNode } from 'react';
-import { NavLink, useLocation } from 'react-router-dom';
+import { NavLink, Outlet, useLocation } from 'react-router-dom';
 import { Menu, Wallet, Home, PackageSearch, ShoppingCart, Link2, User, Settings } from 'lucide-react';
 import { useState } from 'react';
 import clsx from 'clsx';
+import { useAuth } from '../contexts/AuthContext';
 
 const navItems = [
   { to: '/', label: 'Dashboard', icon: Home },
@@ -15,9 +15,26 @@ const navItems = [
   { to: '/mi-perfil', label: 'Mi perfil', icon: User }
 ];
 
-const DashboardLayout = ({ children }: { children: ReactNode }) => {
+const roleLabels: Record<string, string> = {
+  admin: 'Administrador',
+  dropshipper: 'Dropshipper'
+};
+
+const getInitials = (name: string) =>
+  name
+    .split(' ')
+    .filter(Boolean)
+    .slice(0, 2)
+    .map((part) => part[0]?.toUpperCase())
+    .join('');
+
+const DashboardLayout = () => {
   const [isOpen, setIsOpen] = useState(true);
   const location = useLocation();
+  const { user, logout } = useAuth();
+
+  const initials = user ? getInitials(user.name) : 'US';
+  const roleLabel = user ? roleLabels[user.role] ?? user.role : '';
 
   return (
     <div className="flex min-h-screen bg-slate-100">
@@ -66,8 +83,8 @@ const DashboardLayout = ({ children }: { children: ReactNode }) => {
                 <Menu size={18} />
               </button>
               <div>
-                <p className="text-sm text-slate-500">Bienvenido de nuevo</p>
-                <h1 className="text-xl font-semibold text-secondary">Sofía Martínez</h1>
+                <p className="text-xs font-semibold uppercase tracking-wide text-primary">{roleLabel}</p>
+                <h1 className="text-xl font-semibold text-secondary">{user?.name ?? 'Usuario'}</h1>
               </div>
             </div>
             <div className="flex items-center gap-4">
@@ -76,15 +93,33 @@ const DashboardLayout = ({ children }: { children: ReactNode }) => {
                 <p className="text-lg font-semibold text-primary">USDT 3,450.00</p>
               </div>
               <div className="flex h-10 w-10 items-center justify-center rounded-full bg-primary/10 text-primary font-semibold">
-                SM
+                {initials}
               </div>
+              <button
+                type="button"
+                onClick={logout}
+                className="hidden rounded-xl border border-slate-200 px-3 py-2 text-xs font-semibold text-slate-600 transition-colors hover:border-primary hover:text-primary md:inline-flex"
+              >
+                Cerrar sesión
+              </button>
             </div>
           </div>
           <div className="px-6 pb-4 text-sm text-slate-400">
             {navItems.find((item) => item.to === location.pathname)?.label ?? 'Dashboard general'}
           </div>
         </header>
-        <main className="flex-1 px-4 py-6 lg:px-8">{children}</main>
+        <main className="flex-1 px-4 py-6 lg:px-8">
+          <Outlet />
+        </main>
+        <div className="block px-6 pb-6 md:hidden">
+          <button
+            type="button"
+            onClick={logout}
+            className="w-full rounded-xl border border-slate-200 px-4 py-3 text-sm font-semibold text-slate-600 transition-colors hover:border-primary hover:text-primary"
+          >
+            Cerrar sesión
+          </button>
+        </div>
       </div>
     </div>
   );
