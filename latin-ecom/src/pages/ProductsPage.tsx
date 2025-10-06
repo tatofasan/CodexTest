@@ -1,16 +1,27 @@
 import { useMemo, useState } from 'react';
 import SectionCard from '../components/SectionCard';
-import { products } from '../data/mockData';
 import { Star, Filter, Search } from 'lucide-react';
+import { useProducts } from '../api/hooks';
+import LoadingState from '../components/LoadingState';
+import ErrorState from '../components/ErrorState';
+import { Product } from '../utils/types';
 
 const uniqueValues = (items: string[]) => Array.from(new Set(items)).sort();
 
 const ProductsPage = () => {
+  const { data, isLoading, isError, refetch } = useProducts();
+  const products = useMemo(() => data ?? [], [data]);
   const [search, setSearch] = useState('');
   const [category, setCategory] = useState('Todas');
   const [provider, setProvider] = useState('Todos');
-  const categories = useMemo(() => ['Todas', ...uniqueValues(products.map((p) => p.category))], []);
-  const providers = useMemo(() => ['Todos', ...uniqueValues(products.map((p) => p.provider))], []);
+  const categories = useMemo(
+    () => ['Todas', ...uniqueValues(products.map((product: Product) => product.category))],
+    [products]
+  );
+  const providers = useMemo(
+    () => ['Todos', ...uniqueValues(products.map((product: Product) => product.provider))],
+    [products]
+  );
 
   const filtered = useMemo(() => {
     return products.filter((product) => {
@@ -19,7 +30,15 @@ const ProductsPage = () => {
       const matchesProvider = provider === 'Todos' || product.provider === provider;
       return matchesSearch && matchesCategory && matchesProvider;
     });
-  }, [category, provider, search]);
+  }, [category, products, provider, search]);
+
+  if (isLoading) {
+    return <LoadingState message="Cargando catálogo de productos..." />;
+  }
+
+  if (isError) {
+    return <ErrorState onRetry={() => refetch()} />;
+  }
 
   return (
     <SectionCard

@@ -1,14 +1,7 @@
 import SectionCard from '../components/SectionCard';
 import StatCard from '../components/StatCard';
 import { Activity, Package, TrendingUp, Wallet } from 'lucide-react';
-import {
-  billingBreakdown,
-  movements,
-  orderStatusSummary,
-  orders,
-  products,
-  topProducts
-} from '../data/mockData';
+import { useDashboard } from '../api/hooks';
 import { format } from 'date-fns';
 import { es } from 'date-fns/locale';
 import {
@@ -24,13 +17,29 @@ import {
   XAxis,
   YAxis
 } from 'recharts';
+import LoadingState from '../components/LoadingState';
+import ErrorState from '../components/ErrorState';
 
 const chartColors = ['#1F7A8C', '#022B3A', '#EE6C4D', '#1EAE98', '#F4D35E', '#A1AEC4', '#9B287B', '#3A506B'];
 
 const HomePage = () => {
-  const deliveredRate = Math.round((orders.filter((o) => o.status === 'Entregado').length / orders.length) * 100);
-  const incidents = orders.filter((o) => ['En revisión', 'Registrar pago'].includes(o.status)).length;
-  const pendingToConfirm = orders.filter((o) => o.status === 'Pendiente').length;
+  const { data, isLoading, isError, refetch } = useDashboard();
+
+  if (isLoading) {
+    return <LoadingState message="Cargando resumen general..." />;
+  }
+
+  if (isError || !data) {
+    return <ErrorState onRetry={() => refetch()} />;
+  }
+
+  const { orders, movements, products, orderStatusSummary, topProducts, billingBreakdown } = data;
+
+  const deliveredRate = orders.length
+    ? Math.round((orders.filter((order) => order.status === 'Entregado').length / orders.length) * 100)
+    : 0;
+  const incidents = orders.filter((order) => ['En revisión', 'Registrar pago'].includes(order.status)).length;
+  const pendingToConfirm = orders.filter((order) => order.status === 'Pendiente').length;
   const walletBalance = movements.reduce((acc, mov) => acc + mov.amount, 3450);
 
   return (
